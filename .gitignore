@@ -1,0 +1,6 @@
+EIDE_Project/
+MDK-ARM/QSPI_TEST/
+JlinkLog.txt
+JlinkSettings.ini
+*.uvguix.Admin
+*.uvguix.*
