@@ -1,5 +1,5 @@
-#ifndef _GD5F2G_
-#define _GD5F2G_
+#ifndef _NAND_FLASH_
+#define _NAND_FLASH_
 
 
 #include <stdint.h>

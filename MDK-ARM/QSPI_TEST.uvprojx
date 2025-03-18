@@ -548,9 +548,9 @@
           <GroupName>Hardware</GroupName>
           <Files>
             <File>
-              <FileName>gd5f2g.c</FileName>
+              <FileName>nand_flash.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Hardware\Src\gd5f2g.c</FilePath>
+              <FilePath>..\Hardware\Src\nand_flash.c</FilePath>
             </File>
           </Files>
         </Group>

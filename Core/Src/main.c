@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "gd5f2g.h"
+#include "nand_flash.h"
 #include <string.h>
 /* USER CODE END Includes */
 
