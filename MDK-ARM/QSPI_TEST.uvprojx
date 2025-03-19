@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>USE_FULL_LL_DRIVER,USE_HAL_DRIVER,STM32WB35xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32WBxx_HAL_Driver/Inc;../Drivers/STM32WBxx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32WBxx/Include;../Drivers/CMSIS/Include;..\Hardware\Inc;..\Driver_Hal\Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32WBxx_HAL_Driver/Inc;../Drivers/STM32WBxx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32WBxx/Include;../Drivers/CMSIS/Include;..\Hardware\Inc;..\Driver_Hal\Inc;..\Fatfs</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -551,6 +551,31 @@
               <FileName>nand_flash.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Hardware\Src\nand_flash.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Fatfs</GroupName>
+          <Files>
+            <File>
+              <FileName>diskio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Fatfs\diskio.c</FilePath>
+            </File>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Fatfs\ff.c</FilePath>
+            </File>
+            <File>
+              <FileName>ffsystem.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Fatfs\ffsystem.c</FilePath>
+            </File>
+            <File>
+              <FileName>ffunicode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Fatfs\ffunicode.c</FilePath>
             </File>
           </Files>
         </Group>

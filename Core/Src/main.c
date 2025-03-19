@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "nand_flash.h"
+#include "ff.h"
 #include <string.h>
 /* USER CODE END Includes */
 
@@ -61,24 +62,62 @@ void nand_flash_test()
 {
 	// 擦除
  
-	if (nand_flash_erase_block(0x40))
+	if (nand_flash_erase_block(0x3F))
 	{
 		return;
 	}
 
   memset(introduction, 0x55, 2048);
 	// 写入
-	if (nand_flash_write_page(0x40, PROGRAM_LOAD_x4_CMD, introduction, 2048))
+	if (nand_flash_write_page(0x3F, PROGRAM_LOAD_x4_CMD, introduction, 2048))
 	{
 		return;
 	}
   
 	memset(introduction, 0, 2048);
 	// 回读
-	if (nand_flash_read_page_from_cache(0x000040, READ_CACHE_QUAD_CMD, introduction, 2048))
+	if (nand_flash_read_page_from_cache(0x3F, READ_CACHE_QUAD_CMD, introduction, 2048))
 	{
 		return;
 	}
+}
+
+
+FATFS fs;
+FIL file;
+
+BYTE formatWorkBuff[2048];
+BYTE buffer[2048];
+uint32_t resbyte; 
+void fatfs_test()
+{
+	FRESULT res;
+  res = f_mount(&fs, "0:", 1);
+
+  if (res == FR_NO_FILESYSTEM)
+  {
+    MKFS_PARM opt = {0};
+    opt.fmt = FM_FAT32;
+    opt.n_fat = 2;
+    opt.align = 1;
+    opt.au_size = 2048;
+    
+
+    res = f_mkfs("0:", &opt, formatWorkBuff, 2048);
+
+    res = f_mount(NULL, "0:", 1);
+    res = f_mount(&fs, "0:", 1);
+  }
+  res = f_open(&file, "0:test.txt", FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+
+  res = f_write(&file, "Hello World!", 12, &resbyte);
+  res = f_write(&file, "ARON Welcome Fatfs", 18, &resbyte);
+  res = f_lseek(&file, 0);
+  res = f_read(&file, buffer, 30, &resbyte);
+
+  res = f_close(&file);
+
+
 }
 /* USER CODE END PFP */
 
@@ -123,7 +162,8 @@ int main(void)
   MX_QUADSPI_Init();
   /* USER CODE BEGIN 2 */
   nand_flash_initialize();
-  nand_flash_test();
+  // nand_flash_test();
+  fatfs_test();
   /* USER CODE END 2 */
 
   /* Infinite loop */

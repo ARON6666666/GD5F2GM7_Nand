@@ -15,8 +15,7 @@ static uint8_t DID1 = 0x82;
 
 
 extern QSPI_HandleTypeDef hqspi;
-uint8_t param_page[128] = {0};
-uint8_t UID[32] = {0};
+nand_flash_info_buff_t nand_flash_info_buff = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 static uint8_t nand_flash_get_status(uint8_t status_reg_addr);
@@ -576,14 +575,34 @@ uint8_t nand_flash_initialize(void)
 	nand_flash_set_feature_reg(QE_BIT);
 
 	// 获取UID
-	nand_flash_get_check_uid(&UID[0]);
-
+	nand_flash_get_check_uid(&nand_flash_info_buff.uid[0]);
+	
 	// 获取param page
-	nand_flash_get_param_page(param_page);
+	nand_flash_get_param_page(&nand_flash_info_buff.param_page[0]);
 	
 	// 设置PROTECTION
 	// uint8_t temp_val = protection_reg_val | 0x80;
 	nand_flash_set_protection_reg(0x00);
+
+	uint16_t erase_cnt = 0;
+	// 擦除block 1 ~ 2047
+	for (uint16_t i = 0; i < BLOCK_COUNT; i++)
+	{
+		union {
+			uint32_t ra;
+			struct {
+				uint32_t resvered : 6;
+				uint32_t block_addr : 11;
+				uint32_t reserved : 15;
+			} bits;
+		} raw_addr = {0};
+		raw_addr.bits.block_addr = i;
+		ret = nand_flash_erase_block(raw_addr.ra);
+		if (!ret)
+		{
+			erase_cnt++;
+		}	
+	}
 	return ret;
 }
 
@@ -688,7 +707,7 @@ uint8_t nand_flash_erase_block(uint32_t raw_addr)
 	}
 
 	return 0;
-} 
+}
 
 /*!
 	\brief GD5F2GM7 写一页数据
@@ -735,6 +754,25 @@ uint8_t nand_flash_write_page(uint32_t addr, uint8_t prog_cmd, uint8_t *pbuff, u
 	return 0;
 }
 
+/*!
+	\brief 写GD5F2GM7的多页数据
+	\param[in] addr -- 写的地址
+	\param[in] count -- 写的页数
+	\param[out] pbuff -- 写的数据
+	\retval 0 -- 写成功 1 -- 写失败
+	\version 0.0.1
+*/
+uint8_t nand_flash_write_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count)
+{
+	while (count--)
+	{
+		nand_flash_write_page(addr, PROGRAM_LOAD_x4_CMD, pbuff, PAGE_SIZE);
+		addr++; // 偏移到下一个page
+		pbuff += PAGE_SIZE;
+	}
+	return 0;
+}
+
 
 /*!
 	\brief 读取GD5F2GM7的一页数据
@@ -748,7 +786,6 @@ uint8_t nand_flash_write_page(uint32_t addr, uint8_t prog_cmd, uint8_t *pbuff, u
 uint8_t nand_flash_read_page_from_cache(uint32_t addr, uint8_t rd_cache_cmd, uint8_t *pbuff, uint32_t len)
 {
 	QSPI_CommandTypeDef s_cmd = {0};
-
 
 	// 读取数据到Cache Registers
 	if (nand_flash_page_read(addr))
@@ -818,9 +855,32 @@ uint8_t nand_flash_read_page_from_cache(uint32_t addr, uint8_t rd_cache_cmd, uin
 	HAL_QSPI_Receive(&hqspi, (uint8_t *)pbuff, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
 #endif
 	
+	
+	while(HAL_QSPI_GetState(&hqspi) != HAL_QSPI_STATE_READY);
 
 	return 0;
 }
+
+
+/*!
+	\brief 读取GD5F2GM7的多页数据
+	\param[in] addr -- 读取的地址
+	\param[in] count -- 读取的页数
+	\param[out] pbuff -- 读取的数据
+	\retval 0 -- 读取成功 1 -- 读取失败
+	\version 0.0.1
+*/
+uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count)
+{
+	while (count--)
+	{
+		nand_flash_read_page_from_cache(addr, READ_CACHE_QUAD_CMD, pbuff, PAGE_SIZE);
+		addr++;
+		pbuff += PAGE_SIZE;
+	}
+	return 0;
+}
+
 
 
 

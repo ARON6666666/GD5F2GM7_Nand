@@ -16,7 +16,10 @@
 // #define GD5F2GM7RExxG
 
 #ifdef GD5F2GM7UExxG
+#define BLOCK_SIZE							64
+#define BLOCK_COUNT							2048
 #define PAGE_SIZE							2048
+#define PAGE_COUNT							(BLOCK_COUNT * BLOCK_SIZE)
 #elif GD5F2GM7RExxG
 
 #endif
@@ -89,18 +92,47 @@ enum status_reg_mask_code
 } ;
 
 
+typedef struct
+{
+	uint8_t	uid[32];
+	uint8_t	param_page[128];
+} nand_flash_info_buff_t;
+extern nand_flash_info_buff_t nand_flash_info_buff;
+
+
+#pragma pack(1)
+typedef struct
+{
+	uint32_t page_size;
+	uint16_t spare_byte_per_page;
+	uint32_t partial_page_size;
+	uint16_t spare_byte_per_partial_page;
+	uint32_t block_size;
+	uint32_t block_count;
+	uint8_t luns;
+} nand_flash_info_t;
+#pragma pack()
 
 
 
 
-// gd5f2g function prototype
+
+// gd5f2gm7 function prototype
 uint8_t nand_flash_initialize(void);
+
 void nand_flash_softreset(void);
 void nand_flash_poweronreset(void);
+
 uint8_t nand_flash_status_reg_check_bit(uint8_t mask_bit);
+
 uint8_t nand_flash_OTP_Enable(void);
 uint8_t nand_flash_OTP_Disable(void);
+
 uint8_t nand_flash_erase_block(uint32_t raw_addr);
+
 uint8_t nand_flash_read_page_from_cache(uint32_t addr, uint8_t rd_cache_cmd, uint8_t *pbuff, uint32_t len);
+uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count);
+
 uint8_t nand_flash_write_page(uint32_t column_addr, uint8_t prog_cmd, uint8_t *pbuff, uint32_t len);
+uint8_t nand_flash_write_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count);
 #endif
