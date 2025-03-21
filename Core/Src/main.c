@@ -21,6 +21,7 @@
 #include "dma.h"
 #include "memorymap.h"
 #include "quadspi.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -62,21 +63,36 @@ void nand_flash_test()
 {
 	// 擦除
  
-	if (nand_flash_erase_block(0x3F))
+//	if (nand_flash_erase_block(0x78))
+//	{
+//		return;
+//	}
+
+  memset(introduction, 'A', 2048);
+	introduction[2] = 'A';
+	// 写入
+	//nand_flash_write_page(0x78, PROGRAM_LOAD_x4_CMD, introduction, 2048);
+	if (nand_flash_write_multi_page(0x78, introduction, 1))
 	{
 		return;
 	}
-
-  memset(introduction, 0x55, 2048);
-	// 写入
-	if (nand_flash_write_page(0x3F, PROGRAM_LOAD_x4_CMD, introduction, 2048))
+	
+	memset(introduction, 0, 2048);
+	// 回读
+	if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
+	{
+		return;
+	}
+	
+	introduction[1] = 'B';
+	if (nand_flash_write_multi_page(0x78, introduction, 1))
 	{
 		return;
 	}
   
 	memset(introduction, 0, 2048);
 	// 回读
-	if (nand_flash_read_page_from_cache(0x3F, READ_CACHE_QUAD_CMD, introduction, 2048))
+	if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
 	{
 		return;
 	}
@@ -88,6 +104,7 @@ FIL file;
 
 BYTE formatWorkBuff[2048];
 BYTE buffer[2048];
+char filepatah[] = "0:ts.txt";
 uint32_t resbyte; 
 void fatfs_test()
 {
@@ -96,29 +113,26 @@ void fatfs_test()
 
   if (res == FR_NO_FILESYSTEM)
   {
-    MKFS_PARM opt = {0};
-    opt.fmt = FM_FAT32;
-    opt.n_fat = 2;
-    opt.align = 1;
-    opt.au_size = 2048;
     
-
-    res = f_mkfs("0:", &opt, formatWorkBuff, 2048);
+    
+	memset(formatWorkBuff, 0xff, 2048);
+    res = f_mkfs("0:", NULL, formatWorkBuff, 2048);
 
     res = f_mount(NULL, "0:", 1);
     res = f_mount(&fs, "0:", 1);
   }
-  res = f_open(&file, "0:test.txt", FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+	res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
 
   res = f_write(&file, "Hello World!", 12, &resbyte);
-  res = f_write(&file, "ARON Welcome Fatfs", 18, &resbyte);
-  res = f_lseek(&file, 0);
-  res = f_read(&file, buffer, 30, &resbyte);
+//  res = f_lseek(&file, 0);
+//  res = f_read(&file, buffer, 30, &resbyte);
 
   res = f_close(&file);
-
+  
+  res = f_open(&file, filepatah, FA_READ);
 
 }
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -158,12 +172,15 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  // MX_DMA_Init();
+  MX_DMA_Init();
   MX_QUADSPI_Init();
-  /* USER CODE BEGIN 2 */
   nand_flash_initialize();
-  // nand_flash_test();
-  fatfs_test();
+  nand_flash_test();
+  // fatfs_test();
+
+  //MX_USB_Device_Init();
+  /* USER CODE BEGIN 2 */
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -246,6 +263,15 @@ void SystemClock_Config(void)
   */
 void PeriphCommonClock_Config(void)
 {
+  LL_RCC_PLLSAI1_ConfigDomain_48M(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_2, 6, LL_RCC_PLLSAI1Q_DIV_2);
+  LL_RCC_PLLSAI1_Enable();
+  LL_RCC_PLLSAI1_EnableDomain_48M();
+
+  /* Wait till PLLSAI1 is ready */
+  while(LL_RCC_PLLSAI1_IsReady() != 1)
+  {
+  }
+
   LL_RCC_SetSMPSClockSource(LL_RCC_SMPS_CLKSOURCE_HSE);
   LL_RCC_SetSMPSPrescaler(LL_RCC_SMPS_DIV_0);
   LL_RCC_SetRFWKPClockSource(LL_RCC_RFWKP_CLKSOURCE_NONE);

@@ -93,9 +93,6 @@ void HAL_QSPI_MspInit(QSPI_HandleTypeDef* qspiHandle)
 
     /* QUADSPI DMA Init */
     /* QUADSPI Init */
-
-    __HAL_RCC_DMAMUX1_CLK_ENABLE();
-    __HAL_RCC_DMA1_CLK_ENABLE();
     hdma_quadspi.Instance = DMA1_Channel1;
     hdma_quadspi.Init.Request = DMA_REQUEST_QUADSPI;
     hdma_quadspi.Init.Direction = DMA_PERIPH_TO_MEMORY;
@@ -112,9 +109,10 @@ void HAL_QSPI_MspInit(QSPI_HandleTypeDef* qspiHandle)
 
     __HAL_LINKDMA(qspiHandle,hdma,hdma_quadspi);
 
+    /* QUADSPI interrupt Init */
+    HAL_NVIC_SetPriority(QUADSPI_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(QUADSPI_IRQn);
   /* USER CODE BEGIN QUADSPI_MspInit 1 */
-  HAL_NVIC_SetPriority(QUADSPI_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(QUADSPI_IRQn);
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);  
   /* USER CODE END QUADSPI_MspInit 1 */
@@ -146,6 +144,9 @@ void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* qspiHandle)
 
     /* QUADSPI DMA DeInit */
     HAL_DMA_DeInit(qspiHandle->hdma);
+
+    /* QUADSPI interrupt Deinit */
+    HAL_NVIC_DisableIRQ(QUADSPI_IRQn);
   /* USER CODE BEGIN QUADSPI_MspDeInit 1 */
   HAL_NVIC_DisableIRQ(QUADSPI_IRQn);  
   /* USER CODE END QUADSPI_MspDeInit 1 */

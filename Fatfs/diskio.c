@@ -61,6 +61,7 @@ DRESULT disk_read (
 	DRESULT res;
 	
 	// 读取数据
+	//res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, buff, PAGE_SIZE);
 	res = nand_flash_read_multi_page(sector, buff, count);
 	
 	return res;
@@ -71,7 +72,7 @@ DRESULT disk_read (
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
 /*-----------------------------------------------------------------------*/
-
+uint8_t test_buff[2048];
 #if FF_FS_READONLY == 0
 
 DRESULT disk_write (
@@ -83,9 +84,10 @@ DRESULT disk_write (
 {
 	DRESULT res;
 	
+	//res =nand_flash_write_page(sector, PROGRAM_LOAD_x4_CMD, buff, PAGE_SIZE);
 	res = nand_flash_write_multi_page(sector, buff, count);
-
-
+	
+	res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, test_buff, PAGE_SIZE);
 	return res;
 }
 
@@ -120,7 +122,7 @@ DRESULT disk_ioctl (
 	  
 	  case GET_SECTOR_COUNT:
 	  {
-		*(int*)buff = pNandFlashInfo->block_count*pNandFlashInfo->block_size;
+		*(int*)buff = pNandFlashInfo->block_count * pNandFlashInfo->block_size;
 		res = RES_OK;
 	  }
 	  break;
@@ -134,7 +136,7 @@ DRESULT disk_ioctl (
 	  
 	  case GET_BLOCK_SIZE:
 	  {
-		*(int*)buff = pNandFlashInfo->block_size;
+		*(int*)buff = pNandFlashInfo->block_count;
 		res = RES_OK;
 	  }
 	  break;

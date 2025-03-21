@@ -135,4 +135,5 @@ uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count
 
 uint8_t nand_flash_write_page(uint32_t column_addr, uint8_t prog_cmd, uint8_t *pbuff, uint32_t len);
 uint8_t nand_flash_write_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count);
+uint8_t nand_flash_internal_data_move(uint32_t addr, uint8_t* pbuff);
 #endif

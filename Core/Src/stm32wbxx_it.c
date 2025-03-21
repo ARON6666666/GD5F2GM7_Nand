@@ -55,6 +55,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern PCD_HandleTypeDef hpcd_USB_FS;
 extern DMA_HandleTypeDef hdma_quadspi;
 extern QSPI_HandleTypeDef hqspi;
 /* USER CODE BEGIN EV */
@@ -214,18 +215,22 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMAMUX1 overrun interrupt.
+  * @brief This function handles USB low priority interrupt, USB wake-up interrupt through EXTI line 28.
   */
-void DMAMUX1_OVR_IRQHandler(void)
+void USB_LP_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMAMUX1_OVR_IRQn 0 */
+  /* USER CODE BEGIN USB_LP_IRQn 0 */
 
-  /* USER CODE END DMAMUX1_OVR_IRQn 0 */
-  /* USER CODE BEGIN DMAMUX1_OVR_IRQn 1 */
+  /* USER CODE END USB_LP_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_FS);
+  /* USER CODE BEGIN USB_LP_IRQn 1 */
 
-  /* USER CODE END DMAMUX1_OVR_IRQn 1 */
+  /* USER CODE END USB_LP_IRQn 1 */
 }
 
+/**
+  * @brief This function handles QUADSPI global interrupt.
+  */
 /* USER CODE BEGIN 1 */
 void QUADSPI_IRQHandler(void)
 {

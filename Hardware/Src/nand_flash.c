@@ -730,9 +730,9 @@ uint8_t nand_flash_write_page(uint32_t addr, uint8_t prog_cmd, uint8_t *pbuff, u
 	s_cmd.AddressSize = QSPI_ADDRESS_16_BITS;
 	s_cmd.AddressMode = QSPI_ADDRESS_1_LINE;
 	s_cmd.NbData = len;
-	if (prog_cmd == PROGRAM_LOAD_CMD) {
+	if (prog_cmd == PROGRAM_LOAD_CMD || prog_cmd == PROGRAM_LOAD_RANDOM_DATA_CMD) {
 		s_cmd.DataMode = QSPI_DATA_1_LINE;
-	} else if (prog_cmd == PROGRAM_LOAD_x4_CMD) {
+	} else if (prog_cmd == PROGRAM_LOAD_x4_CMD || prog_cmd == PROGRAM_LOAD_RANDOM_DATA_x4_CMD) {
 		s_cmd.DataMode = QSPI_DATA_4_LINES;
 	} 
 	HAL_QSPI_Command(&hqspi, &s_cmd, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
@@ -766,7 +766,8 @@ uint8_t nand_flash_write_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t coun
 {
 	while (count--)
 	{
-		nand_flash_write_page(addr, PROGRAM_LOAD_x4_CMD, pbuff, PAGE_SIZE);
+		//nand_flash_write_page(addr, PROGRAM_LOAD_RANDOM_DATA_x4_CMD, pbuff, PAGE_SIZE);
+		nand_flash_internal_data_move(addr, pbuff);
 		addr++; // 偏移到下一个page
 		pbuff += PAGE_SIZE;
 	}
@@ -886,12 +887,11 @@ uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count
 
 
 
-uint8_t nand_flash_internal_data_move()
+uint8_t nand_flash_internal_data_move(uint32_t addr, uint8_t* pbuff)
 {
-	return 0;
+	uint8_t res = 1;
+	res = nand_flash_page_read(addr);
+	res = nand_flash_write_page(addr, PROGRAM_LOAD_RANDOM_DATA_x4_CMD, pbuff, PAGE_SIZE);
+	return res;
 }
 
-uint8_t nand_flash_write_page_random(uint32_t addr, uint8_t prog_cmd, uint8_t *pbuff)
-{
-	return 0;
-}
