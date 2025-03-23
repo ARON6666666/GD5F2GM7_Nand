@@ -585,7 +585,7 @@ uint8_t nand_flash_initialize(void)
 	nand_flash_set_protection_reg(0x00);
 
 	uint16_t erase_cnt = 0;
-	// 擦除block 1 ~ 2047
+	// 擦除block 0 ~ 2047
 	for (uint16_t i = 0; i < BLOCK_COUNT; i++)
 	{
 		union {
@@ -766,10 +766,9 @@ uint8_t nand_flash_write_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t coun
 {
 	while (count--)
 	{
-		//nand_flash_write_page(addr, PROGRAM_LOAD_RANDOM_DATA_x4_CMD, pbuff, PAGE_SIZE);
-		nand_flash_internal_data_move(addr, pbuff);
+		nand_flash_write_page(addr, PROGRAM_LOAD_RANDOM_DATA_x4_CMD, pbuff, PAGE_SIZE);
 		addr++; // 偏移到下一个page
-		pbuff += PAGE_SIZE;
+		// pbuff += PAGE_SIZE;
 	}
 	return 0;
 }
@@ -877,7 +876,7 @@ uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count
 	{
 		nand_flash_read_page_from_cache(addr, READ_CACHE_QUAD_CMD, pbuff, PAGE_SIZE);
 		addr++;
-		pbuff += PAGE_SIZE;
+		// pbuff += PAGE_SIZE;
 	}
 	return 0;
 }
@@ -887,11 +886,149 @@ uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count
 
 
 
-uint8_t nand_flash_internal_data_move(uint32_t addr, uint8_t* pbuff)
+
+/*!
+	\brief GD5F2GM7的内部数据迁移，以页为单位
+	\param[in] src_addr -- 源页地址
+	\param[in] dest_count -- 目标页地址
+	\retval 0 -- 迁移成功 1 -- 迁移失败
+	\version 0.0.1
+*/
+uint8_t temp[PAGE_SIZE] = {0};
+uint8_t nand_flash_internal_page_data_move(uint32_t src_addr, uint32_t dest_addr)
 {
 	uint8_t res = 1;
-	res = nand_flash_page_read(addr);
-	res = nand_flash_write_page(addr, PROGRAM_LOAD_RANDOM_DATA_x4_CMD, pbuff, PAGE_SIZE);
+	
+
+	// 先把src_addr的内容读到cache
+	res = nand_flash_page_read(src_addr);
+
+	// 再把dest_addr的内容写入新块页面
+	nand_flash_write_enable();
+	if (nand_flash_start_program(dest_addr))
+	{
+		nand_flash_write_disable();
+		return 1;
+	}
+
+
+	// 回读调试用
+	res = nand_flash_read_page_from_cache(dest_addr, READ_CACHE_QUAD_CMD, temp, PAGE_SIZE);
+	for (int i = 0; i < PAGE_SIZE; i++)
+	{
+		if (temp[i] != 'A')
+		{
+			res = 1;
+			break;
+		}
+	}
+
 	return res;
 }
 
+
+/*!
+	\brief GD5F2GM7的内部数据迁移，以块为单位
+	\param[in] src_block -- 源块地址
+	\param[in] dest_block -- 目标块地址
+	\retval 0 -- 迁移成功 1 -- 迁移失败
+	\version 0.0.1
+*/
+uint8_t nand_flash_internal_block_move(uint16_t src_block, uint16_t dest_block)
+{
+	uint8_t res = 1;
+	uint8_t move_succ = 0;
+	uint32_t sa, da;
+	sa = src_block * BLOCK_SIZE;
+	da = dest_block * BLOCK_SIZE;
+
+	//先擦dest_addr所在的块
+	res = nand_flash_erase_block(da);
+	for (uint8_t i = 0; i < BLOCK_SIZE; i++)
+	{
+		res = nand_flash_internal_page_data_move(sa + i, da + i);
+		if (!res)
+		{
+			move_succ++;
+		}
+	}
+
+	return move_succ;
+}
+
+
+/*!
+	\brief GD5F2GM7的换块检测，检测0xFF，不是0xFF就是坏块
+	\param[in] addr -- 块地址
+	\retval 坏块标记值
+	\version 0.0.1
+*/
+uint8_t nand_flash_bad_block_check(uint32_t addr)
+{
+	uint8_t bad_mark = 0x55;
+	uint8_t res = 1;
+	QSPI_CommandTypeDef s_cmd = {0};
+	res = nand_flash_page_read(addr);
+
+	s_cmd.Instruction = READ_CACHE_QUAD_CMD;
+	s_cmd.InstructionMode = QSPI_INSTRUCTION_1_LINE;
+
+	// 0x800是 spare area的首地址，坏块标记就在这个地址
+	s_cmd.Address = 0x800;
+	s_cmd.AddressSize = QSPI_ADDRESS_16_BITS;
+	s_cmd.NbData = 1;
+	
+	s_cmd.DdrMode = QSPI_DDR_MODE_DISABLE;
+	s_cmd.SIOOMode = QSPI_SIOO_INST_EVERY_CMD;
+
+
+	s_cmd.DummyCycles = 4;
+	s_cmd.AddressMode = QSPI_ADDRESS_4_LINES;
+	s_cmd.DataMode = QSPI_DATA_4_LINES;
+	
+	HAL_QSPI_Command(&hqspi, &s_cmd, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
+	HAL_QSPI_Receive_DMA(&hqspi, (uint8_t *)&bad_mark);
+
+	
+	
+	while(HAL_QSPI_GetState(&hqspi) != HAL_QSPI_STATE_READY);
+	return bad_mark;
+}
+
+/*!
+	\brief GD5F2GM7的页ECC读取
+	\param[in] addr -- 页地址
+	\param[in] ecc -- 存ECC值的buffer
+	\retval 0 -- 读取成功 1 -- 读取失败
+	\version 0.0.1
+*/
+uint8_t nand_flash_read_page_ecc(uint32_t addr, uint8_t* pbuff)
+{
+	uint8_t res = 1;
+	QSPI_CommandTypeDef s_cmd = {0};
+	res = nand_flash_page_read(addr);
+
+	s_cmd.Instruction = READ_CACHE_QUAD_CMD;
+	s_cmd.InstructionMode = QSPI_INSTRUCTION_1_LINE;
+
+	// 0x840是 ECC的地址
+	s_cmd.Address = 0x840;
+	s_cmd.AddressSize = QSPI_ADDRESS_16_BITS;
+	s_cmd.NbData = 64;
+	
+	s_cmd.DdrMode = QSPI_DDR_MODE_DISABLE;
+	s_cmd.SIOOMode = QSPI_SIOO_INST_EVERY_CMD;
+
+
+	s_cmd.DummyCycles = 4;
+	s_cmd.AddressMode = QSPI_ADDRESS_4_LINES;
+	s_cmd.DataMode = QSPI_DATA_4_LINES;
+	
+	HAL_QSPI_Command(&hqspi, &s_cmd, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
+	HAL_QSPI_Receive_DMA(&hqspi, (uint8_t *)pbuff);
+
+	
+	
+	while(HAL_QSPI_GetState(&hqspi) != HAL_QSPI_STATE_READY);
+	return res;
+}

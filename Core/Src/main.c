@@ -57,45 +57,60 @@ void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
 //
-uint8_t introduction[2048] = "The GD5F2GM7 NAND Flash memory is a high-performance, ";
+uint8_t introduction[PAGE_SIZE] = "The GD5F2GM7 NAND Flash memory is a high-performance, ";
 
 void nand_flash_test()
 {
 	// 擦除
- 
 //	if (nand_flash_erase_block(0x78))
 //	{
 //		return;
 //	}
 
-  memset(introduction, 'A', 2048);
+  memset(introduction, 'A', PAGE_SIZE);
 	introduction[2] = 'A';
 	// 写入
 	//nand_flash_write_page(0x78, PROGRAM_LOAD_x4_CMD, introduction, 2048);
-	if (nand_flash_write_multi_page(0x78, introduction, 1))
+	if (nand_flash_write_multi_page(0x00, introduction, BLOCK_SIZE))
 	{
 		return;
 	}
 	
-	memset(introduction, 0, 2048);
-	// 回读
-	if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
-	{
-		return;
-	}
+
+  // internal data move. parity attribute ?  0 <-> 1 no 0 <-> 2 yes
+  if (nand_flash_internal_block_move(0x00, 0x02) != BLOCK_SIZE)
+  {
+    return;
+  }
+
+  // 读取ECC
+  uint8_t ecc_buff[BLOCK_SIZE] = {0};
+
+  for (uint8_t i = 0; i < BLOCK_SIZE; i++)
+  {
+    nand_flash_read_page_ecc(i, ecc_buff);
+  }
+    
+
+	// memset(introduction, 0, 2048);
+	// // 回读
+	// if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
+	// {
+	// 	return;
+	// }
 	
-	introduction[1] = 'B';
-	if (nand_flash_write_multi_page(0x78, introduction, 1))
-	{
-		return;
-	}
+	// introduction[1] = 'B';
+	// if (nand_flash_write_multi_page(0x78, introduction, 1))
+	// {
+	// 	return;
+	// }
   
-	memset(introduction, 0, 2048);
-	// 回读
-	if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
-	{
-		return;
-	}
+	// memset(introduction, 0, 2048);
+	// // 回读
+	// if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
+	// {
+	// 	return;
+	// }
 }
 
 
@@ -113,10 +128,13 @@ void fatfs_test()
 
   if (res == FR_NO_FILESYSTEM)
   {
+    MKFS_PARM opt;
+	  opt.fmt = FM_FAT32|FM_SFD;
+	  opt.n_fat = 1;
+	  opt.n_root = 1;
     
-    
-	memset(formatWorkBuff, 0xff, 2048);
-    res = f_mkfs("0:", NULL, formatWorkBuff, 2048);
+	//memset(formatWorkBuff, 0xff, 2048);
+    res = f_mkfs("0:", &opt, formatWorkBuff, 2048);
 
     res = f_mount(NULL, "0:", 1);
     res = f_mount(&fs, "0:", 1);
