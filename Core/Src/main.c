@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "nand_flash.h"
+#include "nand_ftl.h"
 #include "ff.h"
 #include <string.h>
 /* USER CODE END Includes */
@@ -57,6 +58,7 @@ void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
 //
+uint16_t bad_block;
 uint8_t introduction[PAGE_SIZE] = "The GD5F2GM7 NAND Flash memory is a high-performance, ";
 
 void nand_flash_test()
@@ -66,6 +68,13 @@ void nand_flash_test()
 //	{
 //		return;
 //	}
+for (uint32_t i = 0; i < BLOCK_COUNT; i++)
+{
+  if (nand_flash_bad_block_check(i*BLOCK_SIZE) != 0xFF)
+  {
+    bad_block++;
+  }
+}
 
   memset(introduction, 'A', PAGE_SIZE);
 	introduction[2] = 'A';
@@ -118,7 +127,7 @@ FATFS fs;
 FIL file;
 
 BYTE formatWorkBuff[2048];
-BYTE buffer[2048];
+// BYTE buffer[2048];
 char filepatah[] = "0:ts.txt";
 uint32_t resbyte; 
 void fatfs_test()
@@ -128,13 +137,9 @@ void fatfs_test()
 
   if (res == FR_NO_FILESYSTEM)
   {
-    MKFS_PARM opt;
-	  opt.fmt = FM_FAT32|FM_SFD;
-	  opt.n_fat = 1;
-	  opt.n_root = 1;
     
 	//memset(formatWorkBuff, 0xff, 2048);
-    res = f_mkfs("0:", &opt, formatWorkBuff, 2048);
+    res = f_mkfs("0:", NULL, formatWorkBuff, 2048);
 
     res = f_mount(NULL, "0:", 1);
     res = f_mount(&fs, "0:", 1);
@@ -192,9 +197,10 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_QUADSPI_Init();
-  nand_flash_initialize();
-  nand_flash_test();
-  // fatfs_test();
+  // nand_flash_initialize();
+  // nand_flash_test();
+  ftl_init();
+  fatfs_test();
 
   //MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
@@ -208,7 +214,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    
+    ftl_garbage_collect();
   }
   /* USER CODE END 3 */
 }

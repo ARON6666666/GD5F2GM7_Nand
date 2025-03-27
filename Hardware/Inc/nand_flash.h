@@ -141,5 +141,6 @@ uint8_t nand_flash_internal_block_move(uint16_t src_block, uint16_t dest_block);
 
 uint8_t nand_flash_bad_block_check(uint32_t addr);
 uint8_t nand_flash_read_page_ecc(uint32_t addr, uint8_t* pbuff);
-
+uint8_t nand_flash_read_page_spare(uint32_t addr, uint8_t* pbuff, uint8_t len);
+uint8_t nand_flash_write_page_spare(uint32_t addr, uint8_t *pbuff, uint32_t len);
 #endif

@@ -780,7 +780,7 @@ uint8_t nand_flash_write_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t coun
 	\param[in] rd_cache_cmd -- 读取命令
 	\param[in] len -- 读取的长度, 一般为一个页的大小
 	\param[out] pbuff -- 读取的数据
-	\retval 0 -- 读取成功 1 -- 读取失败
+	\retval 0 -- 读取成功 1 -- 读取失败  2 -- ECC错误
 	\version 0.0.1
 */
 uint8_t nand_flash_read_page_from_cache(uint32_t addr, uint8_t rd_cache_cmd, uint8_t *pbuff, uint32_t len)
@@ -858,6 +858,13 @@ uint8_t nand_flash_read_page_from_cache(uint32_t addr, uint8_t rd_cache_cmd, uin
 	
 	while(HAL_QSPI_GetState(&hqspi) != HAL_QSPI_STATE_READY);
 
+	// 读取ECC Status
+	uint8_t status = nand_flash_get_status(REG_STATUS1);
+	if (status >= 0x20)
+	{
+		return 2;
+	}
+
 	return 0;
 }
 
@@ -872,12 +879,14 @@ uint8_t nand_flash_read_page_from_cache(uint32_t addr, uint8_t rd_cache_cmd, uin
 */
 uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count)
 {
+	uint8_t res = 1;
 	while (count--)
 	{
-		nand_flash_read_page_from_cache(addr, READ_CACHE_QUAD_CMD, pbuff, PAGE_SIZE);
+		res = nand_flash_read_page_from_cache(addr, READ_CACHE_QUAD_CMD, pbuff, PAGE_SIZE);
 		addr++;
 		// pbuff += PAGE_SIZE;
 	}
+
 	return 0;
 }
 
@@ -1031,4 +1040,88 @@ uint8_t nand_flash_read_page_ecc(uint32_t addr, uint8_t* pbuff)
 	
 	while(HAL_QSPI_GetState(&hqspi) != HAL_QSPI_STATE_READY);
 	return res;
+}
+
+
+/*!
+	\brief GD5F2GM7的页spare区域读取
+	\param[in] addr -- 页地址
+	\param[in] pbuff -- 存spare区域值的buffer
+	\retval 0 -- 读取成功 1 -- 读取失败
+	\version 0.0.1
+*/
+uint8_t nand_flash_read_page_spare(uint32_t addr, uint8_t* pbuff, uint8_t len)
+{
+	uint8_t res = 1;
+	QSPI_CommandTypeDef s_cmd = {0};
+	res = nand_flash_page_read(addr);
+
+
+	
+	s_cmd.Instruction = READ_CACHE_QUAD_CMD;
+	s_cmd.InstructionMode = QSPI_INSTRUCTION_1_LINE;
+
+	// 0x800是 ECC的地址
+	s_cmd.Address = 0x800;
+	s_cmd.AddressSize = QSPI_ADDRESS_16_BITS;
+	s_cmd.NbData = len;
+	
+	
+	
+	s_cmd.DdrMode = QSPI_DDR_MODE_DISABLE;
+	s_cmd.SIOOMode = QSPI_SIOO_INST_EVERY_CMD;
+
+
+	s_cmd.DummyCycles = 4;
+	s_cmd.AddressMode = QSPI_ADDRESS_4_LINES;
+	s_cmd.DataMode = QSPI_DATA_4_LINES;
+	
+	HAL_QSPI_Command(&hqspi, &s_cmd, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
+	HAL_QSPI_Receive_DMA(&hqspi, (uint8_t *)pbuff);
+
+	
+	
+	while(HAL_QSPI_GetState(&hqspi) != HAL_QSPI_STATE_READY);
+	return res;
+}
+
+/*!
+	\brief GD5F2GM7 写spare区域
+	\param[in] addr -- 写入的地址
+	\param[in] prog_cmd -- 写入命令
+	\param[in] len -- 写入的长度, 一般为一个页的大小
+	\param[in] pbuff -- 写入的数据
+	\param[out] None
+	\retval 0 -- 操作成功 1 -- 操作失败
+	\version 0.0.1
+*/
+uint8_t nand_flash_write_page_spare(uint32_t addr, uint8_t *pbuff, uint32_t len)
+{
+	QSPI_CommandTypeDef s_cmd = {0};
+
+	s_cmd.Instruction = PROGRAM_LOAD_RANDOM_DATA_x4_CMD;
+	s_cmd.InstructionMode = QSPI_INSTRUCTION_1_LINE;
+
+	s_cmd.Address = 0x800;
+	s_cmd.AddressSize = QSPI_ADDRESS_16_BITS;
+	s_cmd.AddressMode = QSPI_ADDRESS_1_LINE;
+	s_cmd.NbData = len;
+	s_cmd.DataMode = QSPI_DATA_4_LINES; 
+	HAL_QSPI_Command(&hqspi, &s_cmd, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
+#ifdef USE_QSPI_DMA
+	HAL_QSPI_Transmit_DMA(&hqspi, pbuff);
+#elif USE_QSPI_IT
+	HAL_QSPI_Transmit_IT(&hqspi, pbuff);
+#else
+	HAL_QSPI_Transmit(&hqspi, pbuff, HAL_QSPI_TIMEOUT_DEFAULT_VALUE);
+#endif
+	nand_flash_write_enable();
+
+	if (nand_flash_start_program(addr))
+	{
+		nand_flash_write_disable();
+		return 1;
+	}
+	nand_flash_write_disable();
+	return 0;
 }

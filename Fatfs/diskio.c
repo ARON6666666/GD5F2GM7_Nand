@@ -10,12 +10,14 @@
 #include "ff.h"			/* Obtains integer types */
 #include "diskio.h"		/* Declarations of disk functions */
 #include "nand_flash.h"
+#include "nand_ftl.h"
+#include <string.h>
 
 /* Definitions of physical drive number for each drive */
 // #define DEV_RAM		0	/* Example: Map Ramdisk to physical drive 0 */
 // #define DEV_MMC		1	/* Example: Map MMC/SD card to physical drive 1 */
 // #define DEV_USB		2	/* Example: Map USB MSD to physical drive 2 */
-
+static uint8_t sector_cache[512];
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -41,7 +43,7 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-	
+	// ftl_init();
 	return RES_OK;
 }
 
@@ -62,9 +64,21 @@ DRESULT disk_read (
 	
 	// 读取数据
 	//res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, buff, PAGE_SIZE);
-	res = nand_flash_read_multi_page(sector, buff, count);
+	// res = nand_flash_read_multi_page(sector, buff, count);
+	for (int i = 0; i < count; i++)
+	{
+		uint32_t phy_addr = ftl_convert_sector(sector + i);
+		if (nand_flash_read_page_from_cache(phy_addr,
+											READ_CACHE_QUAD_CMD,
+											buff + i*SECTOR_SIZE,
+											SECTOR_SIZE) == 2)
+		{
+			// ECC 错误
+			return RES_ERROR;
+		}
+	}
 	
-	return res;
+	return RES_OK;
 }
 
 
@@ -85,9 +99,20 @@ DRESULT disk_write (
 	DRESULT res;
 	
 	//res =nand_flash_write_page(sector, PROGRAM_LOAD_x4_CMD, buff, PAGE_SIZE);
-	res = nand_flash_write_multi_page(sector, buff, count);
+	// res = nand_flash_write_multi_page(sector, buff, count);
 	
-	res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, test_buff, PAGE_SIZE);
+	// res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, test_buff, PAGE_SIZE);
+	for (int i = 0; i < count; i++)
+	{
+		uint32_t phy_addr = ftl_convert_sector(sector + i);
+		if (nand_flash_write_page(phy_addr,
+									PROGRAM_LOAD_RANDOM_DATA_CMD,
+									buff + i*SECTOR_SIZE,
+									SECTOR_SIZE) != 0)
+		{
+			return RES_ERROR;
+		}
+	}
 	return res;
 }
 
@@ -105,14 +130,13 @@ DRESULT disk_ioctl (
 )
 {
 	DRESULT res;
-	nand_flash_info_t* pNandFlashInfo = 
-				(nand_flash_info_t*)&nand_flash_info_buff.param_page[80];
 
 	// Process of the command for the RAM drive
 	switch(cmd)
 	{	
 	  
 	  case CTRL_SYNC :
+	    ftl_garbage_collect();
 		res = RES_OK;
 	  break;	
 	  
@@ -122,21 +146,22 @@ DRESULT disk_ioctl (
 	  
 	  case GET_SECTOR_COUNT:
 	  {
-		*(int*)buff = pNandFlashInfo->block_count * pNandFlashInfo->block_size;
+		DWORD total_sectors = LOGICAL_BLOCKS * NAND_PAGES_PER_BLOCK * SECTORS_PER_PAGE;
+		*(int*)buff = total_sectors;
 		res = RES_OK;
 	  }
 	  break;
 	  
 	  case GET_SECTOR_SIZE:
 	  {
-		*(int*)buff = pNandFlashInfo->page_size;
+		*(int*)buff = SECTOR_SIZE;
 		res = RES_OK;
 	  }
 	  break;
 	  
 	  case GET_BLOCK_SIZE:
 	  {
-		*(int*)buff = pNandFlashInfo->block_count;
+		*(int*)buff = BLOCK_SIZE;
 		res = RES_OK;
 	  }
 	  break;
