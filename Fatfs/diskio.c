@@ -67,15 +67,7 @@ DRESULT disk_read (
 	// res = nand_flash_read_multi_page(sector, buff, count);
 	for (int i = 0; i < count; i++)
 	{
-		uint32_t phy_addr = ftl_convert_sector(sector + i);
-		if (nand_flash_read_page_from_cache(phy_addr,
-											READ_CACHE_QUAD_CMD,
-											buff + i*SECTOR_SIZE,
-											SECTOR_SIZE) == 2)
-		{
-			// ECC 错误
-			return RES_ERROR;
-		}
+		ftl_read_page(sector, buff + i*SECTOR_SIZE);
 	}
 	
 	return RES_OK;
@@ -96,7 +88,7 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-	DRESULT res;
+	DRESULT res = RES_OK;
 	
 	//res =nand_flash_write_page(sector, PROGRAM_LOAD_x4_CMD, buff, PAGE_SIZE);
 	// res = nand_flash_write_multi_page(sector, buff, count);
@@ -104,11 +96,7 @@ DRESULT disk_write (
 	// res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, test_buff, PAGE_SIZE);
 	for (int i = 0; i < count; i++)
 	{
-		uint32_t phy_addr = ftl_convert_sector(sector + i);
-		if (nand_flash_write_page(phy_addr,
-									PROGRAM_LOAD_RANDOM_DATA_CMD,
-									buff + i*SECTOR_SIZE,
-									SECTOR_SIZE) != 0)
+		if (ftl_write_page(sector, buff + i*SECTOR_SIZE))
 		{
 			return RES_ERROR;
 		}
@@ -136,7 +124,7 @@ DRESULT disk_ioctl (
 	{	
 	  
 	  case CTRL_SYNC :
-	    ftl_garbage_collect();
+	    ftl_garbage_collect(get_ftl_obj());
 		res = RES_OK;
 	  break;	
 	  

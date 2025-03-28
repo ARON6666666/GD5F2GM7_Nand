@@ -68,58 +68,66 @@ void nand_flash_test()
 //	{
 //		return;
 //	}
-for (uint32_t i = 0; i < BLOCK_COUNT; i++)
-{
-  if (nand_flash_bad_block_check(i*BLOCK_SIZE) != 0xFF)
-  {
-    bad_block++;
-  }
-}
+    // for (uint16_t blk = 0; blk < BLOCK_COUNT; blk++)
+    // {
+    //   if (nand_flash_bad_block_check(blk*BLOCK_SIZE) != 0xFF)
+    //   {
+    //     bad_block++;
+    //   }
+    // }
 
-  memset(introduction, 'A', PAGE_SIZE);
-	introduction[2] = 'A';
-	// 写入
-	//nand_flash_write_page(0x78, PROGRAM_LOAD_x4_CMD, introduction, 2048);
-	if (nand_flash_write_multi_page(0x00, introduction, BLOCK_SIZE))
+
+      // block_meta_data_t meta;
+      // nand_flash_write_page_spare(0, (uint8_t *)&meta, sizeof(block_meta_data_t));
+      // nand_flash_read_page_spare(0, (uint8_t *)&meta, sizeof(block_meta_data_t));
+      // nand_flash_erase_block(0);
+      // memset(&meta, 0, sizeof(block_meta_data_t));
+      // nand_flash_read_page_spare(0, (uint8_t *)&meta, sizeof(block_meta_data_t));
+
+  // memset(introduction, 'A', PAGE_SIZE);
+	// introduction[2] = 'A';
+	// // 写入
+	// //nand_flash_write_page(0x78, PROGRAM_LOAD_x4_CMD, introduction, 2048);
+	// if (nand_flash_write_multi_page(0x00, introduction, BLOCK_SIZE))
+	// {
+	// 	return;
+	// }
+	
+
+  // // internal data move. parity attribute ?  0 <-> 1 no 0 <-> 2 yes
+  // if (nand_flash_internal_block_move(0x00, 0x02) != BLOCK_SIZE)
+  // {
+  //   return;
+  // }
+
+  // // 读取ECC
+  // uint8_t ecc_buff[BLOCK_SIZE] = {0};
+
+  // for (uint8_t i = 0; i < BLOCK_SIZE; i++)
+  // {
+  //   nand_flash_read_page_ecc(i, ecc_buff);
+  // }
+    
+
+	memset(introduction, 0, 2048);
+	// // 回读
+	// if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
+	// {
+	// 	return;
+	// }
+	
+	introduction[1] = 'B';
+	if (nand_flash_write_multi_page(0x0, introduction, 1))
 	{
 		return;
 	}
-	
-
-  // internal data move. parity attribute ?  0 <-> 1 no 0 <-> 2 yes
-  if (nand_flash_internal_block_move(0x00, 0x02) != BLOCK_SIZE)
-  {
-    return;
-  }
-
-  // 读取ECC
-  uint8_t ecc_buff[BLOCK_SIZE] = {0};
-
-  for (uint8_t i = 0; i < BLOCK_SIZE; i++)
-  {
-    nand_flash_read_page_ecc(i, ecc_buff);
-  }
-    
-
-	// memset(introduction, 0, 2048);
-	// // 回读
-	// if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
-	// {
-	// 	return;
-	// }
-	
-	// introduction[1] = 'B';
-	// if (nand_flash_write_multi_page(0x78, introduction, 1))
-	// {
-	// 	return;
-	// }
   
-	// memset(introduction, 0, 2048);
-	// // 回读
-	// if (nand_flash_read_page_from_cache(0x78, READ_CACHE_QUAD_CMD, introduction, 2048))
-	// {
-	// 	return;
-	// }
+	memset(introduction, 0, 2048);
+	// 回读
+	if (nand_flash_read_page_from_cache(0x0, READ_CACHE_QUAD_CMD, introduction, 2048))
+	{
+		return;
+	}
 }
 
 
@@ -135,7 +143,7 @@ void fatfs_test()
 	FRESULT res;
   res = f_mount(&fs, "0:", 1);
 
-  if (res == FR_NO_FILESYSTEM)
+  if (res == FR_NO_FILESYSTEM || res == FR_DISK_ERR)
   {
     
 	//memset(formatWorkBuff, 0xff, 2048);
@@ -202,7 +210,7 @@ int main(void)
   ftl_init();
   fatfs_test();
 
-  //MX_USB_Device_Init();
+  // MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -214,7 +222,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    ftl_garbage_collect();
+    // ftl_garbage_collect();
   }
   /* USER CODE END 3 */
 }
