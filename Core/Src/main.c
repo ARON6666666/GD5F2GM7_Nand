@@ -60,6 +60,8 @@ void PeriphCommonClock_Config(void);
 //
 uint16_t bad_block;
 uint8_t introduction[PAGE_SIZE] = "The GD5F2GM7 NAND Flash memory is a high-performance, ";
+uint8_t comp[PAGE_SIZE] = {0};
+uint8_t ok;
 
 void nand_flash_test()
 {
@@ -84,21 +86,50 @@ void nand_flash_test()
       // memset(&meta, 0, sizeof(block_meta_data_t));
       // nand_flash_read_page_spare(0, (uint8_t *)&meta, sizeof(block_meta_data_t));
 
-  // memset(introduction, 'A', PAGE_SIZE);
-	// introduction[2] = 'A';
-	// // 写入
-	// //nand_flash_write_page(0x78, PROGRAM_LOAD_x4_CMD, introduction, 2048);
-	// if (nand_flash_write_multi_page(0x00, introduction, BLOCK_SIZE))
-	// {
-	// 	return;
-	// }
+  memset(introduction, 'A', PAGE_SIZE);
+	// 写入
+	//nand_flash_write_page(0x78, PROGRAM_LOAD_x4_CMD, introduction, 2048);
+	if (nand_flash_write_multi_page(0x40, introduction, BLOCK_SIZE))
+	{
+		return;
+	}
 	
 
-  // // internal data move. parity attribute ?  0 <-> 1 no 0 <-> 2 yes
-  // if (nand_flash_internal_block_move(0x00, 0x02) != BLOCK_SIZE)
-  // {
-  //   return;
-  // }
+  // internal data move. parity attribute ?  0 <-> 1 no 0 <-> 2 yes
+  if (nand_flash_internal_block_move(0x01, 0x7D1) != BLOCK_SIZE)
+  {
+    return;
+  }
+
+  // 读取block2和 block0对比
+  for (uint8_t page = 0; page < 0x40; page++)
+  {
+     nand_flash_read_page_from_cache(page + 0x7D1*BLOCK_SIZE, READ_CACHE_QUAD_CMD, comp, BLOCK_SIZE);
+     if (memcmp(comp, introduction, BLOCK_SIZE) == 0)
+     {
+        ok++;
+     }
+  }
+
+  memset(introduction, 0, PAGE_SIZE);
+  ok = 0;
+  // 擦除block 0
+  nand_flash_erase_block(0);
+
+  if (nand_flash_internal_block_move(0x7D1, 0x01) != BLOCK_SIZE)
+  {
+    return;
+  }
+
+  // 读取block2和 block0对比
+  for (uint8_t page = 0x00; page < 0x40; page++)
+  {
+     nand_flash_read_page_from_cache(page + 0x1 * BLOCK_SIZE , READ_CACHE_QUAD_CMD, introduction, BLOCK_SIZE);
+     if (memcmp(comp, introduction, BLOCK_SIZE) == 0)
+     {
+        ok++;
+     }
+  }
 
   // // 读取ECC
   // uint8_t ecc_buff[BLOCK_SIZE] = {0};
@@ -135,32 +166,36 @@ FATFS fs;
 FIL file;
 
 BYTE formatWorkBuff[2048];
-// BYTE buffer[2048];
+BYTE buffer[2048];
 char filepatah[] = "0:ts.txt";
 uint32_t resbyte; 
 void fatfs_test()
 {
 	FRESULT res;
   res = f_mount(&fs, "0:", 1);
-
-  if (res == FR_NO_FILESYSTEM || res == FR_DISK_ERR)
+  memset(buffer, 0x55, 2048);
+  if (res == FR_NO_FILESYSTEM)
   {
     
-	//memset(formatWorkBuff, 0xff, 2048);
+
     res = f_mkfs("0:", NULL, formatWorkBuff, 2048);
 
     res = f_mount(NULL, "0:", 1);
     res = f_mount(&fs, "0:", 1);
   }
+//  res = f_unlink(filepatah);
+//  nand_flash_erase_block(fs.database);
 	res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
 
-  res = f_write(&file, "Hello World!", 12, &resbyte);
-//  res = f_lseek(&file, 0);
-//  res = f_read(&file, buffer, 30, &resbyte);
+  res = f_write(&file, buffer, 2048, &resbyte);
+  resbyte = 0;
+  res = f_write(&file, buffer, 2048, &resbyte);
 
   res = f_close(&file);
   
   res = f_open(&file, filepatah, FA_READ);
+  memset(buffer, 0, 2048);
+  res = f_read(&file, buffer, 2048, &resbyte);
 
 }
 
@@ -210,7 +245,7 @@ int main(void)
   ftl_init();
   fatfs_test();
 
-  // MX_USB_Device_Init();
+  MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
