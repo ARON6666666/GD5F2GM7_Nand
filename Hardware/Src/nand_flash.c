@@ -584,25 +584,25 @@ uint8_t nand_flash_initialize(void)
 	// uint8_t temp_val = protection_reg_val | 0x80;
 	nand_flash_set_protection_reg(0x00);
 
-//	uint16_t erase_cnt = 0;
-//	// 擦除block 0 ~ 2047
-//	for (uint16_t i = 0; i < BLOCK_COUNT; i++)
-//	{
-//		union {
-//			uint32_t ra;
-//			struct {
-//				uint32_t resvered : 6;
-//				uint32_t block_addr : 11;
-//				uint32_t reserved : 15;
-//			} bits;
-//		} raw_addr = {0};
-//		raw_addr.bits.block_addr = i;
-//		ret = nand_flash_erase_block(raw_addr.ra);
-//		if (!ret)
-//		{
-//			erase_cnt++;
-//		}	
-//	}
+	// uint16_t erase_cnt = 0;
+	// // 擦除block 0 ~ 2047
+	// for (uint16_t i = 0; i < BLOCK_COUNT; i++)
+	// {
+	// 	union {
+	// 		uint32_t ra;
+	// 		struct {
+	// 			uint32_t resvered : 6;
+	// 			uint32_t block_addr : 11;
+	// 			uint32_t reserved : 15;
+	// 		} bits;
+	// 	} raw_addr = {0};
+	// 	raw_addr.bits.block_addr = i;
+	// 	ret = nand_flash_erase_block(raw_addr.ra);
+	// 	if (!ret)
+	// 	{
+	// 		erase_cnt++;
+	// 	}	
+	// }
 	return ret;
 }
 
@@ -903,17 +903,21 @@ uint8_t nand_flash_read_multi_page(uint32_t addr, uint8_t* pbuff, uint32_t count
 	\retval 0 -- 迁移成功 1 -- 迁移失败
 	\version 0.0.1
 */
-uint8_t temp[PAGE_SIZE+64] = {0};
+// uint8_t temp[PAGE_SIZE+64] = {0};
 uint8_t nand_flash_internal_page_data_move(uint32_t src_addr, uint32_t dest_addr)
 {
 	uint8_t res = 1;
+	uint8_t temp[64] = {0};
+	// 读取spare area
+	nand_flash_read_page_spare(src_addr, temp, 64);
+	nand_flash_write_page_spare(dest_addr, temp, 64);
 	
-
+	
+	
 	// 先把src_addr的内容读到cache
 	res = nand_flash_page_read(src_addr);
 
-	// 读取spare area
-	nand_flash_read_page_spare(src_addr, temp, 64);
+	
 
 	// 再把dest_addr的内容写入新块页面
 	nand_flash_write_enable();
@@ -923,12 +927,12 @@ uint8_t nand_flash_internal_page_data_move(uint32_t src_addr, uint32_t dest_addr
 		return 1;
 	}
 
-	nand_flash_write_page_spare(dest_addr, temp, 64);
+	
 
 
 	// 回读调试用
-	nand_flash_read_page_from_cache(dest_addr, READ_CACHE_QUAD_CMD, temp, PAGE_SIZE+64);
-	memset(temp, 0, PAGE_SIZE);
+	// nand_flash_read_page_from_cache(dest_addr, READ_CACHE_QUAD_CMD, temp, PAGE_SIZE+64);
+	// memset(temp, 0, PAGE_SIZE+64);
 
 	return res;
 }
@@ -938,10 +942,11 @@ uint8_t nand_flash_internal_page_data_move(uint32_t src_addr, uint32_t dest_addr
 	\brief GD5F2GM7的内部数据迁移，以块为单位
 	\param[in] src_block -- 源块地址
 	\param[in] dest_block -- 目标块地址
+	\param[in] ignore_page -- 需要忽略的页
 	\retval 0 -- 迁移成功 1 -- 迁移失败
 	\version 0.0.1
 */
-uint8_t nand_flash_internal_block_move(uint16_t src_block, uint16_t dest_block)
+uint8_t nand_flash_internal_block_move(uint16_t src_block, uint16_t dest_block, uint8_t ignore_page)
 {
 	uint8_t res = 1;
 	uint8_t move_succ = 0;
@@ -953,6 +958,8 @@ uint8_t nand_flash_internal_block_move(uint16_t src_block, uint16_t dest_block)
 	res = nand_flash_erase_block(da);
 	for (uint8_t i = 0; i < BLOCK_SIZE; i++)
 	{
+		if (ignore_page == i)
+			continue;
 		res = nand_flash_internal_page_data_move(sa + i, da + i);
 		if (!res)
 		{

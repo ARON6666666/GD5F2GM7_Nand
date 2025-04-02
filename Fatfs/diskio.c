@@ -17,7 +17,7 @@
 // #define DEV_RAM		0	/* Example: Map Ramdisk to physical drive 0 */
 // #define DEV_MMC		1	/* Example: Map MMC/SD card to physical drive 1 */
 // #define DEV_USB		2	/* Example: Map USB MSD to physical drive 2 */
-static uint8_t sector_cache[512];
+
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -63,8 +63,6 @@ DRESULT disk_read (
 	DRESULT res;
 	
 	// 读取数据
-	//res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, buff, PAGE_SIZE);
-	// res = nand_flash_read_multi_page(sector, buff, count);
 	for (int i = 0; i < count; i++)
 	{
 		ftl_read_page(sector, buff + i*SECTOR_SIZE);
@@ -78,7 +76,6 @@ DRESULT disk_read (
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
 /*-----------------------------------------------------------------------*/
-uint8_t test_buff[2048];
 #if FF_FS_READONLY == 0
 
 DRESULT disk_write (
@@ -90,13 +87,18 @@ DRESULT disk_write (
 {
 	DRESULT res = RES_OK;
 	
-	//res =nand_flash_write_page(sector, PROGRAM_LOAD_x4_CMD, buff, PAGE_SIZE);
-	// res = nand_flash_write_multi_page(sector, buff, count);
 	
-	// res = nand_flash_read_page_from_cache(sector, READ_CACHE_QUAD_CMD, test_buff, PAGE_SIZE);
-	for (int i = 0; i < count; i++)
+	uint8_t region_type = ftl_identify_region(sector);
+	if (region_type == REGION_BOOT || region_type == REGION_FAT || region_type == REGION_ROOT_DIR)
 	{
-		if (ftl_write_page(sector, buff + i*SECTOR_SIZE))
+		if (ftl_write_critical(sector, buff, region_type) != 0)
+		{
+			return RES_ERROR;
+		}
+	}
+	else
+	{
+		if (ftl_write_page(sector, buff))
 		{
 			return RES_ERROR;
 		}
@@ -124,7 +126,7 @@ DRESULT disk_ioctl (
 	{	
 	  
 	  case CTRL_SYNC :
-	    ftl_garbage_collect(get_ftl_obj());
+	    // ftl_garbage_collect(get_ftl_obj());
 		res = RES_OK;
 	  break;	
 	  

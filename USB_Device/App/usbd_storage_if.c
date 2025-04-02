@@ -22,7 +22,7 @@
 #include "usbd_storage_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-#include "nand_flash.h"
+#include "nand_ftl.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -193,7 +193,7 @@ int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_
   /* USER CODE BEGIN 3 */
 	nand_flash_info_t* pNandFlashInfo = 
 				(nand_flash_info_t*)&nand_flash_info_buff.param_page[80];
-  *block_num  = pNandFlashInfo->block_count * pNandFlashInfo->block_size;
+  *block_num  = pNandFlashInfo->block_count * pNandFlashInfo->block_size - SPARE_BLOCKS;
   *block_size = pNandFlashInfo->page_size;
   return (USBD_OK);
   /* USER CODE END 3 */
@@ -232,7 +232,8 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
 int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 6 */
-	nand_flash_read_multi_page(blk_addr, buf, blk_len);
+  ftl_read_page(blk_addr, buf);
+	// nand_flash_read_multi_page(blk_addr, buf, blk_len);
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -245,7 +246,17 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 7 */
-	nand_flash_write_multi_page(blk_addr, buf, blk_len);
+
+  uint8_t region_type = ftl_identify_region(blk_addr);
+  // if (region_type == REGION_BOOT || region_type == REGION_FAT || region_type == REGION_ROOT_DIR)
+  // {
+  //   ftl_write_critical(blk_addr, buf, region_type);
+  // }
+  // else
+  // {
+  //   ftl_write_page(blk_addr, buf);
+  // }
+  ftl_save_descriptor(FTL_DESC_BLOCK);
   return (USBD_OK);
   /* USER CODE END 7 */
 }
