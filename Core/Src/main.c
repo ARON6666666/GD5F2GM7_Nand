@@ -96,10 +96,10 @@ void nand_flash_test()
 	
 
   // internal data move. parity attribute ?  0 <-> 1 no 0 <-> 2 yes
-  if (nand_flash_internal_block_move(0x01, 0x7D1) != BLOCK_SIZE)
-  {
-    return;
-  }
+//  if (nand_flash_internal_block_move(0x01, 0x7D1) != BLOCK_SIZE)
+//  {
+//    return;
+//  }
 
   // 读取block2和 block0对比
   for (uint8_t page = 0; page < 0x40; page++)
@@ -116,10 +116,10 @@ void nand_flash_test()
   // 擦除block 0
   nand_flash_erase_block(0);
 
-  if (nand_flash_internal_block_move(0x7D1, 0x01) != BLOCK_SIZE)
-  {
-    return;
-  }
+//  if (nand_flash_internal_block_move(0x7D1, 0x01) != BLOCK_SIZE)
+//  {
+//    return;
+//  }
 
   // 读取block2和 block0对比
   for (uint8_t page = 0x00; page < 0x40; page++)
@@ -169,9 +169,11 @@ BYTE formatWorkBuff[2048];
 BYTE buffer[2048];
 char filepatah[] = "0:ts.txt";
 uint32_t resbyte; 
+uint32_t i;
 void fatfs_test()
 {
 	FRESULT res;
+
   res = f_mount(&fs, "0:", 1);
   memset(buffer, 0x55, 2048);
   if (res == FR_NO_FILESYSTEM)
@@ -180,23 +182,32 @@ void fatfs_test()
 
     res = f_mkfs("0:", NULL, formatWorkBuff, 2048);
 
+
     res = f_mount(NULL, "0:", 1);
     res = f_mount(&fs, "0:", 1);
+    ftl_mark_critical_regions(fs.volbase, fs.fatbase, fs.dirbase);
   }
-//  res = f_unlink(filepatah);
-//  nand_flash_erase_block(fs.database);
-	res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
+  ftl_init_critical_spare_block(fs.volbase, fs.fatbase, fs.dirbase);
+  res = f_unlink(filepatah);
+  res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
 
-  res = f_write(&file, buffer, 2048, &resbyte);
-  resbyte = 0;
-  res = f_write(&file, buffer, 2048, &resbyte);
-
+  for (i = 0x80; i < 0xC0; i++)
+  {
+    res = f_write(&file, buffer, 2048, &resbyte);
+  }
+    
+  
+  
+  
   res = f_close(&file);
   
-  res = f_open(&file, filepatah, FA_READ);
-  memset(buffer, 0, 2048);
-  res = f_read(&file, buffer, 2048, &resbyte);
-
+  
+  
+  // res = f_open(&file, filepatah, FA_READ);
+  
+  // memset(buffer, 0, 2048);
+  // res = f_read(&file, buffer, 2048, &resbyte);
+  ftl_save_descriptor(FTL_DESC_BLOCK);
 }
 
 /* USER CODE END PFP */
@@ -233,7 +244,7 @@ int main(void)
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  HAL_Delay(1000);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
