@@ -22,6 +22,7 @@
 #include "stm32wbxx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "nand_ftl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

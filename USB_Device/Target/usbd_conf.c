@@ -28,7 +28,7 @@
 #include "usbd_msc.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "nand_ftl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -97,7 +97,7 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
     __HAL_RCC_USB_CLK_ENABLE();
 
     /* Peripheral interrupt init */
-    HAL_NVIC_SetPriority(USB_LP_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(USB_LP_IRQn, 2, 1);
     HAL_NVIC_EnableIRQ(USB_LP_IRQn);
   /* USER CODE BEGIN USB_MspInit 1 */
 
@@ -192,7 +192,7 @@ void HAL_PCD_DataInStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
   /* USER CODE END HAL_PCD_DataInStageCallback_PreTreatment */
   USBD_LL_DataInStage((USBD_HandleTypeDef*)hpcd->pData, epnum, hpcd->IN_ep[epnum].xfer_buff);
   /* USER CODE BEGIN HAL_PCD_DataInStageCallback_PostTreatment  */
-
+  
   /* USER CODE END HAL_PCD_DataInStageCallback_PostTreatment */
 }
 
@@ -656,7 +656,7 @@ USBD_StatusTypeDef USBD_LL_Transmit(USBD_HandleTypeDef *pdev, uint8_t ep_addr, u
 {
   HAL_StatusTypeDef hal_status = HAL_OK;
   USBD_StatusTypeDef usb_status = USBD_OK;
-
+  
   hal_status = HAL_PCD_EP_Transmit(pdev->pData, ep_addr, pbuf, size);
 
   usb_status =  USBD_Get_USB_Status(hal_status);

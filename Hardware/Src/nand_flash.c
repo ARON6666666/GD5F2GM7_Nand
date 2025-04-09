@@ -688,11 +688,7 @@ uint8_t nand_flash_start_program(uint32_t addr)
 uint8_t nand_flash_erase_block(uint32_t raw_addr)
 {
 	QSPI_CommandTypeDef s_cmd = {0};
-
-	if (raw_addr / BLOCK_SIZE == 0)
-	{
-		nand_flash_write_enable();
-	}
+	
 	nand_flash_write_enable();
 
 	s_cmd.Instruction = BLOCK_ERASE_CMD;

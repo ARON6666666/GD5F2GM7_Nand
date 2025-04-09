@@ -1,6 +1,7 @@
 #ifndef _NAND_FTL_H_
 #define _NAND_FTL_H_
 #include "nand_flash.h"
+#include "ff.h"
 
 // 物理存储参数（根据GD5F2GM7数据手册定义）
 #define NAND_PAGE_SIZE        PAGE_SIZE         // 主数据区大小
@@ -52,6 +53,17 @@ typedef struct {
 } ftl_t;
 #pragma pack()
 
+typedef struct
+{
+    uint8_t buffer[2][2048];      // 双缓冲区（大小需与存储介质块对齐）
+    volatile uint32_t active_buf;  // 当前活动缓冲区索引（0/1）
+    volatile uint8_t buf_ready[2];    // 缓冲区就绪标志
+    uint32_t current_lba;          // 当前已缓存的LBA地址
+    uint32_t next_lba;             // 预读取的LBA地址
+    uint32_t max_lba;              // 存储介质最大LBA
+} double_buffer_t;
+extern double_buffer_t dbuf;
+
 
 void ftl_init(void);
 uint32_t ftl_convert_sector(uint32_t sector);
@@ -70,4 +82,8 @@ void ftl_save_descriptor(uint16_t block_no);
 
 void ftl_mark_critical_regions(uint32_t boot_start_page, uint32_t fat_start_page, uint32_t root_dir_start_page);
 void ftl_init_critical_spare_block(uint32_t boot_start_page, uint32_t fat_start_page, uint32_t root_dir_start_page);
+
+int8_t ftl_read_data(uint8_t lun, uint8_t *buf, uint32_t lba, uint32_t len);
+void ftl_init_double_buffer(void);
+
 #endif

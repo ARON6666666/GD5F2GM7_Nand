@@ -104,7 +104,7 @@ void nand_flash_test()
   // 读取block2和 block0对比
   for (uint8_t page = 0; page < 0x40; page++)
   {
-     nand_flash_read_page_from_cache(page + 0x7D1*BLOCK_SIZE, READ_CACHE_QUAD_CMD, comp, BLOCK_SIZE);
+     nand_flash_read_page_from_cache(page + 0x40*BLOCK_SIZE, READ_CACHE_QUADDTR_CMD, comp, BLOCK_SIZE);
      if (memcmp(comp, introduction, BLOCK_SIZE) == 0)
      {
         ok++;
@@ -169,7 +169,7 @@ BYTE formatWorkBuff[2048];
 BYTE buffer[2048];
 char filepatah[] = "0:ts.txt";
 uint32_t resbyte; 
-uint32_t i;
+uint32_t i,j;
 void fatfs_test()
 {
 	FRESULT res;
@@ -191,9 +191,11 @@ void fatfs_test()
   res = f_unlink(filepatah);
   res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
 
-  for (i = 0x80; i < 0xC0; i++)
+  for (i = 0x00, j = 0; i < 0x7F50; i++, j++)
   {
+    memset(buffer, '0' + (j % 9), 2048);
     res = f_write(&file, buffer, 2048, &resbyte);
+	  nand_flash_read_page_from_cache(i+0x80, READ_CACHE_QUAD_CMD, introduction, 2048);
   }
     
   
@@ -202,12 +204,8 @@ void fatfs_test()
   res = f_close(&file);
   
   
-  
-  // res = f_open(&file, filepatah, FA_READ);
-  
-  // memset(buffer, 0, 2048);
-  // res = f_read(&file, buffer, 2048, &resbyte);
   ftl_save_descriptor(FTL_DESC_BLOCK);
+  ftl_init_double_buffer();
 }
 
 /* USER CODE END PFP */
@@ -225,7 +223,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -245,6 +243,7 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
   HAL_Delay(1000);
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -268,7 +267,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // ftl_garbage_collect();
+    
+    if (dbuf.buf_ready[1 - dbuf.active_buf] == 0)
+    {
+      ftl_read_page(dbuf.next_lba, &dbuf.buffer[1 - dbuf.active_buf][0]);
+
+      dbuf.buf_ready[1 - dbuf.active_buf] = 1; // 设置就绪标志
+    }
+    // nand_flash_read_page_from_cache(0x82, READ_CACHE_QUAD_CMD, introduction, 2048);
+    // memset(introduction, 0, 2048);
+	
+    
   }
   /* USER CODE END 3 */
 }

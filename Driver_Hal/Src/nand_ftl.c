@@ -18,6 +18,8 @@ static block_meta_data_t rootdir_meta = {.region_type = 0xFF};
 // 引导区、FAT区、ROOTDIR 区域的替换块
 static uint16_t critical_blocks[CRITICAL_BLOCKS][CRITICAL_BLOCKS];
 
+// 预读缓存
+
 
 // static function prototype
 static void ftl_read_block_meta(uint32_t phy_block, block_meta_data_t* meta);
@@ -274,7 +276,7 @@ uint8_t ftl_write_critical(uint32_t sector, uint8_t* data, uint8_t region_type)
     meta.region_type = region_type;
     nand_flash_write_page_spare(phy_addr, (uint8_t*)&meta, sizeof(block_meta_data_t));
     uint8_t ret = nand_flash_write_page(phy_addr, PROGRAM_LOAD_x4_CMD, data, PAGE_SIZE);
-	nand_flash_read_page_from_cache(phy_addr, READ_CACHE_QUAD_CMD, em, 20);
+	// nand_flash_read_page_from_cache(phy_addr, READ_CACHE_QUAD_CMD, em, 20);
     
     return ret;
 }
@@ -421,7 +423,7 @@ uint8_t ftl_write_page(uint32_t sector, uint8_t* pbuff)
 
     // step 3. 写入数据。坏块管理？
     nand_flash_write_page(phy_addr, PROGRAM_LOAD_RANDOM_DATA_x4_CMD, pbuff, NAND_PAGE_SIZE);
-    nand_flash_read_page_from_cache(phy_addr, READ_CACHE_QUAD_CMD, tem, 20);
+    // nand_flash_read_page_from_cache(phy_addr, READ_CACHE_QUAD_CMD, tem, 20);
     return 0;
 }
 
@@ -467,3 +469,51 @@ uint8_t ftl_identify_region(uint32_t sector)
 
 //     return (meta.region_type == REGION_ROOT_DIR) ? 1 : 0;
 // }
+
+
+
+
+
+
+double_buffer_t dbuf;
+void ftl_init_double_buffer(void)
+{
+    dbuf.max_lba = LOGICAL_BLOCKS * NAND_PAGES_PER_BLOCK - 1;
+    dbuf.next_lba = 0;
+    dbuf.active_buf = 0;
+    dbuf.buf_ready[1] = 0;
+    
+    // 预加载第一个缓冲区
+    ftl_read_page(0x80, dbuf.buffer[0]);
+    dbuf.buf_ready[0] = 1;
+    dbuf.current_lba = 0x80;
+    dbuf.next_lba = dbuf.current_lba + 1;  
+}
+
+int8_t ftl_read_data(uint8_t lun, uint8_t *buf, uint32_t lba, uint32_t len)
+{
+    // ---- 第1步：检查请求是否在缓存范围内 ----
+    if (lba >= dbuf.current_lba && 
+        lba <= (dbuf.current_lba + 1)) 
+    {
+      // 命中缓存：直接从活动缓冲区拷贝数据
+      memcpy(buf, &dbuf.buffer[dbuf.active_buf][0], len * NAND_PAGE_SIZE);
+      if (dbuf.buffer[dbuf.active_buf][0] == 0xFF)
+      {
+          // 读取数据失败
+          return -1;
+      }
+      dbuf.buf_ready[dbuf.active_buf] = 0; // 清除就绪标志
+      dbuf.active_buf = 1 - dbuf.active_buf; // 切换活动缓冲区
+      dbuf.current_lba = lba + 1;
+      dbuf.next_lba = dbuf.current_lba + 1;
+
+      
+      return 0; // 成功
+    }
+    else
+    {
+        
+    }
+
+}

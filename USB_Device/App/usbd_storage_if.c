@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "nand_ftl.h"
+#include "stm32wbxx_hal_gpio.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -224,6 +225,9 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
   /* USER CODE END 5 */
 }
 
+
+uint32_t blk;
+uint16_t len;
 /**
   * @brief  .
   * @param  lun: .
@@ -232,8 +236,19 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
 int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 6 */
-  ftl_read_page(blk_addr, buf);
-	// nand_flash_read_multi_page(blk_addr, buf, blk_len);
+
+  if (ftl_identify_region(blk_addr) != REGION_DATA)
+  {
+    ftl_read_page(blk_addr, buf);
+  }
+  else
+  {
+	  blk++;
+    ftl_read_data(lun, buf, blk_addr, blk_len);
+  }
+  
+  // ftl_read_page(blk_addr, buf);
+
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -247,14 +262,21 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 {
   /* USER CODE BEGIN 7 */
 
-  uint8_t region_type = ftl_identify_region(blk_addr);
+  // uint8_t region_type = ftl_identify_region(blk_addr);
   // if (region_type == REGION_BOOT || region_type == REGION_FAT || region_type == REGION_ROOT_DIR)
   // {
-  //   ftl_write_critical(blk_addr, buf, region_type);
+  //   for (uint16_t i = 0; i < blk_len; i++)
+  //   {
+  //     ftl_write_critical(blk_addr + i, buf + i*NAND_PAGE_SIZE, region_type);
+  //   }
   // }
   // else
   // {
-  //   ftl_write_page(blk_addr, buf);
+  //   for (uint16_t i = 0; i < blk_len; i++)
+  //   {
+  //     if (blk_addr >= 0x80)
+  //       ftl_write_page(blk_addr + i, buf + i*NAND_PAGE_SIZE);
+  //   }
   // }
   ftl_save_descriptor(FTL_DESC_BLOCK);
   return (USBD_OK);
