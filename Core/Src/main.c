@@ -188,20 +188,18 @@ void fatfs_test()
     ftl_mark_critical_regions(fs.volbase, fs.fatbase, fs.dirbase);
   }
   ftl_init_critical_spare_block(fs.volbase, fs.fatbase, fs.dirbase);
-  res = f_unlink(filepatah);
-  res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
+  // res = f_unlink(filepatah);
+  // res = f_open(&file, filepatah, FA_CREATE_ALWAYS | FA_WRITE |FA_READ);
 
-  for (i = 0x00, j = 0; i < 0x7F50; i++, j++)
-  {
-    memset(buffer, '0' + (j % 9), 2048);
-    res = f_write(&file, buffer, 2048, &resbyte);
-	  nand_flash_read_page_from_cache(i+0x80, READ_CACHE_QUAD_CMD, introduction, 2048);
-  }
+  // for (i = 0x00, j = 0; i < 0x7F50; i++, j++)
+  // {
+  //   res = f_write(&file, buffer, 2048, &resbyte);
+  // }
     
   
   
   
-  res = f_close(&file);
+  // res = f_close(&file);
   
   
   ftl_save_descriptor(FTL_DESC_BLOCK);
@@ -276,7 +274,10 @@ int main(void)
     }
     // nand_flash_read_page_from_cache(0x82, READ_CACHE_QUAD_CMD, introduction, 2048);
     // memset(introduction, 0, 2048);
-	
+  //   for (i = 0x00, j = 0; i < 0x7F50; i++, j++)
+  // {
+  //   nand_flash_read_page_from_cache(0x80+i, READ_CACHE_QUAD_CMD, introduction, 2048);
+  // }
     
   }
   /* USER CODE END 3 */

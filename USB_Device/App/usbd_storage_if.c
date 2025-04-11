@@ -150,7 +150,12 @@ static int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uin
 static int8_t STORAGE_GetMaxLun_FS(void);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+typedef struct
+{
+    uint8_t BlockSpace[512];
+} BLOCK_TYPE;
 
+BLOCK_TYPE mass_block[10];
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -196,6 +201,8 @@ int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_
 				(nand_flash_info_t*)&nand_flash_info_buff.param_page[80];
   *block_num  = pNandFlashInfo->block_count * pNandFlashInfo->block_size - SPARE_BLOCKS;
   *block_size = pNandFlashInfo->page_size;
+  // *block_num = 1000; //Pretend having so many buffer,not has actually.
+  // *block_size = 512;
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -226,8 +233,7 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
 }
 
 
-uint32_t blk;
-uint16_t len;
+
 /**
   * @brief  .
   * @param  lun: .
@@ -243,10 +249,11 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
   }
   else
   {
-	  blk++;
     ftl_read_data(lun, buf, blk_addr, blk_len);
+    // memcpy(buf, mass_block[0].BlockSpace, 2048);
   }
-  
+  // if (blk_addr < 10)
+  //       memcpy(buf, mass_block[blk_addr].BlockSpace, 512);
   // ftl_read_page(blk_addr, buf);
 
   return (USBD_OK);
@@ -278,6 +285,8 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
   //       ftl_write_page(blk_addr + i, buf + i*NAND_PAGE_SIZE);
   //   }
   // }
+  // if (blk_addr < 10)
+  //       memcpy(mass_block[blk_addr].BlockSpace, buf, 512);
   ftl_save_descriptor(FTL_DESC_BLOCK);
   return (USBD_OK);
   /* USER CODE END 7 */

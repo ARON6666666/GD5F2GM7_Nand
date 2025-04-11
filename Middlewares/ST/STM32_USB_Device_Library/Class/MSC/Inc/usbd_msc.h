@@ -47,7 +47,7 @@ extern "C" {
 #define MSC_MEDIA_PACKET             512U
 #endif /* MSC_MEDIA_PACKET */
 
-#define MSC_MAX_FS_PACKET            0x40U
+#define MSC_MAX_FS_PACKET            0x20U
 #define MSC_MAX_HS_PACKET            0x200U
 
 #define BOT_GET_MAX_LUN              0xFE
@@ -59,7 +59,7 @@ extern "C" {
 #endif /* MSC_EPIN_ADDR */
 
 #ifndef MSC_EPOUT_ADDR
-#define MSC_EPOUT_ADDR               0x01U
+#define MSC_EPOUT_ADDR               0x02U
 #endif /* MSC_EPOUT_ADDR */
 
 /**
